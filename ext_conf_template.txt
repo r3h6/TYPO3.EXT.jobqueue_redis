@@ -1,0 +1,2 @@
+# cat=jobqueue//20 type=text; label=Parameters: Redis client parameters.
+parameters = tcp://127.0.0.1:6379?database=15
