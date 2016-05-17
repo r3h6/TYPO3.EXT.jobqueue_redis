@@ -17,9 +17,6 @@ namespace R3H6\JobqueueRedis\Queue;
 
 use R3H6\Jobqueue\Queue\Message;
 use R3H6\Jobqueue\Queue\QueueInterface;
-use Pheanstalk\Exception\ServerException;
-use Pheanstalk\Pheanstalk;
-use Pheanstalk\PheanstalkInterface;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
 
 /**
@@ -46,13 +43,11 @@ class RedisQueue implements QueueInterface
         'timeout' => 1,
         'parameters' => 'tcp://127.0.0.1:6379?database=15',
         'options' => null,
+        'expire' => 300,
     ];
 
     /**
-     * Constructor
-     *
-     * @param string $name
-     * @param array $options
+     * {@inheritdoc}
      */
     public function __construct($name, array $options = array())
     {
@@ -65,120 +60,117 @@ class RedisQueue implements QueueInterface
     }
 
     /**
-     * Publish a message to the queue
-     *
-     * @param Message $message
-     * @return void
+     * {@inheritdoc}
      */
     public function publish(Message $message)
     {
-        if ($message->getIdentifier() !== null) {
-            $added = $this->client->sadd("queue:{$this->name}:ids", $message->getIdentifier());
-            if (!$added) {
-                return;
-            }
+        if ($message->getIdentifier()) {
+            $this->finish($message);
         }
+        $message->setIdentifier(\TYPO3\CMS\Core\Utility\StringUtility::getUniqueId('Redis'));
         $encodedMessage = $this->encodeMessage($message);
-        $this->client->lpush("queue:{$this->name}:messages", $encodedMessage);
+
+        if ($message->isDelayed()) {
+            $this->client->zadd("queue:{$this->name}:delayed", time() + $message->getDelay(), $encodedMessage);
+        } else {
+            $this->client->rpush("queue:{$this->name}:messages", $encodedMessage);
+        }
         $message->setState(Message::STATE_PUBLISHED);
     }
 
     /**
-     * Wait for a message in the queue and return the message for processing
-     * (without safety queue)
-     *
-     * @param int $timeout
-     * @return \TYPO3\Jobqueue\Common\Message The received message or null if a timeout occured
+     * {@inheritdoc}
      */
     public function waitAndTake($timeout = null)
     {
-        $timeout !== null ? $timeout : $this->options['timeout'];
-        $keyAndValue = $this->client->brpop("queue:{$this->name}:messages", $timeout);
+        $this->migrateJobs("queue:{$this->name}:delayed");
+        $this->migrateJobs("queue:{$this->name}:reserved");
+        $timeout = $this->normalizeTimeout($timeout);
+        $keyAndValue = $this->client->blpop("queue:{$this->name}:messages", $timeout);
         $value = $keyAndValue[1];
         if (is_string($value)) {
             $message = $this->decodeMessage($value);
-
-            if ($message->getIdentifier() !== null) {
-                $this->client->srem("queue:{$this->name}:ids", $message->getIdentifier());
-            }
-
-                // The message is marked as done
             $message->setState(Message::STATE_DONE);
-
             return $message;
-        } else {
-            return null;
         }
+        return null;
     }
 
     /**
-     * Wait for a message in the queue and save the message to a safety queue
-     *
-     * TODO: Idea for implementing a TTR (time to run) with monitoring of safety queue. E.g.
-     * use different queue names with encoded times? With brpoplpush we cannot modify the
-     * queued item on transfer to the safety queue and we cannot update a timestamp to mark
-     * the run start time in the message, so separate keys should be used for this.
-     *
-     * @param int $timeout
-     * @return Message
+     * {@inheritdoc}
      */
     public function waitAndReserve($timeout = null)
     {
-        $timeout !== null ? $timeout : $this->options['timeout'];
-        $value = $this->client->brpoplpush("queue:{$this->name}:messages", "queue:{$this->name}:processing", $timeout);
+        $this->migrateJobs("queue:{$this->name}:delayed");
+        $this->migrateJobs("queue:{$this->name}:reserved");
+        $timeout = $this->normalizeTimeout($timeout);
+        $keyAndValue = $this->client->blpop("queue:{$this->name}:messages", $timeout);
+        $value = $keyAndValue[1];
         if (is_string($value)) {
+            $this->client->zadd("queue:{$this->name}:reserved", time() + $this->options['expire'], $value);
             $message = $this->decodeMessage($value);
-            if ($message->getIdentifier() !== null) {
-                $this->client->srem("queue:{$this->name}:ids", $message->getIdentifier());
-            }
+            $message->setState(Message::STATE_RESERVED);
             return $message;
-        } else {
-            return null;
+        }
+        return null;
+    }
+
+    /**
+     * Migrate jobs from one queue to other.
+     *
+     * @param  string $from
+     * @return void
+     * @see https://laravel.com/api/5.1/Illuminate/Queue/RedisQueue.html
+     */
+    protected function migrateJobs($from)
+    {
+        $time = time();
+        $to = "queue:{$this->name}:messages";
+        $jobs = $this->client->zrangebyscore($from, '-inf', $time);
+        if (count($jobs) > 0) {
+            $this->client->zremrangebyscore($from, '-inf', $time);
+            call_user_func_array([$this->client, 'rpush'], array_merge([$to], $jobs));
         }
     }
 
     /**
-     * Mark a message as finished
-     *
-     * @param Message $message
-     * @return boolean true if the message could be removed
+     * {@inheritdoc}
      */
     public function finish(Message $message)
     {
-        // $originalValue = $message->getOriginalValue();
-        $success = $this->client->lrem("queue:{$this->name}:processing", 0, $originalValue) > 0;
-        if ($success) {
-            $message->setState(Message::STATE_DONE);
+        $state = $message->getState();
+        $encodedMessage = $this->encodeMessage($message);
+        $success = $this->client->lrem("queue:{$this->name}:messages", 0, $encodedMessage) > 0;
+        if (!$success) {
+            $success = $this->client->zrem("queue:{$this->name}:reserved", $encodedMessage) > 0;
         }
+        if ($success) {
+            $state = Message::STATE_DONE;
+        }
+        $message->setState($state);
         return $success;
     }
 
     /**
-     * Peek for messages
-     *
-     * @param integer $limit
-     * @return array Messages or empty array if no messages were present
+     * {@inheritdoc}
      */
     public function peek($limit = 1)
     {
-        $result = $this->client->lrange("queue:{$this->name}:messages", -($limit), -1);
+        $messages = array();
+        $result = $this->client->lrange("queue:{$this->name}:messages", 0, $limit - 1);
         if (is_array($result) && count($result) > 0) {
-            $messages = array();
             foreach ($result as $value) {
                 $message = $this->decodeMessage($value);
                 // The message is still published and should not be processed!
                 $message->setState(Message::STATE_PUBLISHED);
                 $messages[] = $message;
             }
-            return $messages;
         }
-        return array();
+        return $messages;
     }
 
     /**
-     * Count messages in the queue
-     *
-     * @return integer
+     * {@inheritdoc}
      */
     public function count()
     {
@@ -197,7 +189,7 @@ class RedisQueue implements QueueInterface
      */
     protected function encodeMessage(Message $message)
     {
-        $value = json_encode($message->toArray());
+        $value = json_encode(array_merge($message->toArray(), ['state' => null]));
         return $value;
     }
 
@@ -222,9 +214,24 @@ class RedisQueue implements QueueInterface
     }
 
     /**
+     * Normalize timeout to make behavior of redis compatible with other implemenations.
      *
-     * @param string $identifier
-     * @return Message
+     * @param  int $timeout
+     * @return int
+     */
+    protected function normalizeTimeout($timeout)
+    {
+        $timeout !== null ? $timeout : $this->options['timeout'];
+        if ($timeout === 0) {
+            $timeout = 1;
+        } else if ($timeout === null) {
+            $timeout = 0;
+        }
+        return $timeout;
+    }
+
+    /**
+     * {@inheritdoc}
      */
     public function getMessage($identifier)
     {
@@ -232,7 +239,7 @@ class RedisQueue implements QueueInterface
     }
 
     /**
-     * @return array
+     * {@inheritdoc}
      */
     public function getOptions()
     {
@@ -240,7 +247,7 @@ class RedisQueue implements QueueInterface
     }
 
     /**
-     * @return string
+     * {@inheritdoc}
      */
     public function getName()
     {
@@ -248,7 +255,7 @@ class RedisQueue implements QueueInterface
     }
 
     /**
-     * @return Pheanstalk\Pheanstalk
+     * @return Predis\Client
      */
     public function getClient()
     {
