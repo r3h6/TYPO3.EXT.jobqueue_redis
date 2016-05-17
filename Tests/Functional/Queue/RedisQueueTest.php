@@ -14,7 +14,6 @@ namespace R3H6\JobqueueRedis\Tests\Functional\Queue;
  * Public License for more details.                                       *
  *                                                                        */
 
-use Pheanstalk\Pheanstalk;
 use R3H6\JobqueueRedis\Queue\RedisQueue;
 use R3H6\Jobqueue\Queue\Message;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
