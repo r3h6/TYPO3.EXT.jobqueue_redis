@@ -221,7 +221,10 @@ class RedisQueue implements QueueInterface
      */
     protected function normalizeTimeout($timeout)
     {
-        $timeout !== null ? $timeout : $this->options['timeout'];
+        if ($timeout === null) {
+            $timeout = $this->options['timeout'];
+        }
+
         if ($timeout === 0) {
             $timeout = 1;
         } else if ($timeout === null) {

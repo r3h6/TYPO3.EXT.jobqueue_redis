@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<xliff version="1.0">
+    <file source-language="en" datatype="plaintext" original="messages" date="2016-05-18T16:28:39Z" product-name="jobqueue_redis">
+        <header/>
+        <body>
+            <trans-unit id="configuration.parameters">
+                <source>Parameters: Redis client parameters.</source>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>

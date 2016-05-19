@@ -1,4 +1,4 @@
-.. ==================================================
+﻿.. ==================================================
 .. FOR YOUR INFORMATION
 .. --------------------------------------------------
 .. -*- coding: utf-8 -*- with BOM.
@@ -10,9 +10,9 @@
 Documentation
 =============
 
-Job queues for TYPO3 CMS. Implements concrete queue for the redis workqueue. Requires the exension *jobqueue* to be installed.
+Job queues for TYPO3 CMS. Implements concrete queue for the redis workqueue. Requires the exension **jobqueue** to be installed.
 
-This extension is a backport of the flow package Flowpack/jobqueue-redis.
+This extension is a backport of the flow package `Flowpack/jobqueue-redis <https://github.com/Flowpack/jobqueue-redis/>`_.
 
 
 Installation
@@ -27,8 +27,11 @@ Configuration
 
 In order to use this queue you should set the *defaultQueue* to ``R3H6\JobqueueRedis\Queue\RedisQueue`` in the *jobqueue* extension settings.
 
+.. tip::
+
+   Check extension configuration options.
 
 Contributing
 ------------
 
-Bug reports and pull request are welcome through `GitHub <https://github.com/r3h6/TYPO3.EXT.jobqueue_redis/>`_
+Bug reports and pull request are welcome through `GitHub <https://github.com/r3h6/TYPO3.EXT.jobqueue_redis/>`_.

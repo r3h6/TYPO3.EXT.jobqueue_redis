@@ -1,2 +1,2 @@
-# cat=jobqueue//20 type=text; label=Parameters: Redis client parameters.
+# cat=jobqueue//20 type=text; label=LLL:EXT:jobqueue_redis/Resources/Private/Language/locallang_be.xlf:configuration.parameters
 parameters = tcp://127.0.0.1:6379?database=15
