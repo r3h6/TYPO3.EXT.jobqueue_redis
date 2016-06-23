@@ -18,6 +18,8 @@ This extension is a backport of the flow package `Flowpack/jobqueue-redis <https
 Installation
 ------------
 
+This extension requires the `jobqueue <https://typo3.org/extensions/repository/view/jobqueue/>`_ extension.
+
 If you are using composer you can also require the package ``"predis/predis": "^1.0"``.
 If not, the provided predis phar archive will be used instead, perhaps this is not the most recent version of the library.
 
@@ -30,6 +32,7 @@ In order to use this queue you should set the *defaultQueue* to ``R3H6\JobqueueR
 .. tip::
 
    Check extension configuration options.
+
 
 Contributing
 ------------

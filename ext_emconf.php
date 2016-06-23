@@ -28,7 +28,6 @@ $EM_CONF[$_EXTKEY] = array(
 			'jobqueue' => '1.0.1-1.99.99',
 		),
 		'conflicts' => array(
-			'jobqueue_beanstalkd' => '1.0.0',
 		),
 		'suggests' => array(
 		),
