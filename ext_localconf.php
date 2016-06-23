@@ -12,5 +12,5 @@ $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['jobqueue']['R3H6\\JobqueueRedis\\Queue\\
 ];
 
 if (!class_exists('Predis\\Client', true)) {
-    require_once \TYPO3\CMS\Core\Utility\GeneralUtility::getFileAbsFileName('EXT:' . $_EXTKEY . '/Resources/Private/Vendors/predis.phar');
+    require_once 'phar://' . \TYPO3\CMS\Core\Utility\GeneralUtility::getFileAbsFileName('EXT:' . $_EXTKEY . '/Resources/Private/Vendors/predis.phar/autoload.php');
 }
