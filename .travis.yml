@@ -35,8 +35,6 @@ before_install:
   - composer self-update
   - composer --version
 
-install: make install
-
 before_script:
   - composer require typo3/cms="$TYPO3_VERSION"
   # Restore composer.json
