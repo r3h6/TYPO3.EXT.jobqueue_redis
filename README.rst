@@ -6,6 +6,9 @@
 
 .. _start:
 
+.. image:: https://travis-ci.org/r3h6/TYPO3.EXT.jobqueue_redis.svg?branch=master
+    :target: https://travis-ci.org/r3h6/TYPO3.EXT.jobqueue_redis
+
 =============
 Documentation
 =============
@@ -38,3 +41,10 @@ Contributing
 ------------
 
 Bug reports and pull request are welcome through `GitHub <https://github.com/r3h6/TYPO3.EXT.jobqueue_redis/>`_.
+
+
+Changelog
+---------
+
+1.1.0 Compatibility with TYPO3 8.7, Add composer file
+1.0.0 First release

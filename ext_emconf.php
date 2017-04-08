@@ -16,7 +16,7 @@ $EM_CONF[$_EXTKEY] = array(
 	'category' => 'services',
 	'author' => 'R3 H6',
 	'author_email' => 'r3h6@outlook.com',
-	'state' => 'beta',
+	'state' => 'stable',
 	'internal' => '',
 	'uploadfolder' => '0',
 	'createDirs' => '',
@@ -24,7 +24,7 @@ $EM_CONF[$_EXTKEY] = array(
 	'version' => '1.1.0',
 	'constraints' => array(
 		'depends' => array(
-			'typo3' => '7.6.0-8.7.99',
+			'typo3' => '7.6.0-8.99.99',
 			'jobqueue' => '1.1.0-1.99.99',
 		),
 		'conflicts' => array(
